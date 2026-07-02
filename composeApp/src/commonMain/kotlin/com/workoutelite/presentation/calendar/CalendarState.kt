@@ -11,8 +11,20 @@ data class CalendarState(
     val canGoToNextMonth: Boolean = false,
     val weeks: List<List<CalendarCellUi?>> = emptyList(),
     val selectedDay: WorkoutDayUi? = null,
+    val today: HistoryPeriodUi = HistoryPeriodUi(),
+    val week: HistoryPeriodUi = HistoryPeriodUi(),
     val totalWorkouts: Int = 0,
+    val averageMinutes: Int = 0,
     val streakDays: Int = 0,
+    val rollingDifficulty: String = "",
+    val activeSessionLabel: String = "No workout in progress",
+)
+
+@Immutable
+data class HistoryPeriodUi(
+    val label: String = "",
+    val workouts: Int = 0,
+    val minutes: Int = 0,
 )
 
 data class CalendarCellUi(

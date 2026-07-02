@@ -25,9 +25,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.EventAvailable
 import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.LocalFireDepartment
+import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -105,8 +107,15 @@ private fun HistoryContent(
             style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold,
         )
+        Text(
+            text = state.activeSessionLabel,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Spacer(modifier = Modifier.height(12.dp))
-        StatsRow(state = state)
+        PeriodRow(state = state)
+        Spacer(modifier = Modifier.height(12.dp))
+        StatsGrid(state = state)
         Spacer(modifier = Modifier.height(16.dp))
         MonthCard(state = state, onAction = onAction)
         Spacer(modifier = Modifier.height(16.dp))
@@ -131,20 +140,76 @@ private fun HistoryContent(
 }
 
 @Composable
-private fun StatsRow(state: CalendarState) {
+private fun PeriodRow(state: CalendarState) {
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        StatCard(
-            icon = Icons.Rounded.FitnessCenter,
-            value = "${state.totalWorkouts}",
-            label = if (state.totalWorkouts == 1) "workout" else "workouts",
-            modifier = Modifier.weight(1f),
-        )
-        StatCard(
-            icon = Icons.Rounded.LocalFireDepartment,
-            value = "${state.streakDays}",
-            label = "day streak",
-            modifier = Modifier.weight(1f),
-        )
+        PeriodCard(period = state.today, modifier = Modifier.weight(1f))
+        PeriodCard(period = state.week, modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun PeriodCard(
+    period: HistoryPeriodUi,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        ),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = period.label,
+                style = MaterialTheme.typography.labelLarge,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "${period.workouts}",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = (if (period.workouts == 1) "workout" else "workouts") +
+                    " · ${period.minutes} min",
+                style = MaterialTheme.typography.labelMedium,
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatsGrid(state: CalendarState) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            StatCard(
+                icon = Icons.Rounded.FitnessCenter,
+                value = "${state.totalWorkouts}",
+                label = if (state.totalWorkouts == 1) "workout" else "workouts",
+                modifier = Modifier.weight(1f),
+            )
+            StatCard(
+                icon = Icons.Rounded.LocalFireDepartment,
+                value = "${state.streakDays}",
+                label = "day streak",
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            StatCard(
+                icon = Icons.Rounded.Timer,
+                value = "${state.averageMinutes}",
+                label = "avg minutes",
+                modifier = Modifier.weight(1f),
+            )
+            StatCard(
+                icon = Icons.AutoMirrored.Rounded.TrendingUp,
+                value = state.rollingDifficulty,
+                label = "difficulty",
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 
@@ -396,8 +461,12 @@ private fun CalendarScreenPreview() {
             state = CalendarState(
                 isLoading = false,
                 monthLabel = "July 2026",
+                today = HistoryPeriodUi("Today", workouts = 1, minutes = 14),
+                week = HistoryPeriodUi("This week", workouts = 4, minutes = 58),
                 totalWorkouts = 8,
+                averageMinutes = 14,
                 streakDays = 3,
+                rollingDifficulty = "3.2",
                 weeks = listOf(
                     listOf(null, null, CalendarCellUi("2026-07-01", 1, false, false, false, 1)) +
                         (2..5).map { CalendarCellUi("2026-07-0$it", it, it == 2, it > 2, false, if (it == 2) 2 else 0) },

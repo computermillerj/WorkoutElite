@@ -38,6 +38,8 @@ class CalendarViewModel(
     private var completionsByDate = emptyMap<String, List<CompletedWorkout>>()
     private var workoutsById = emptyMap<String, DailyWorkout>()
     private var exerciseNames = emptyMap<String, String>()
+    private var rollingDifficultyScore = 0.0
+    private var hasActiveSession = false
     private var displayedMonth: LocalDate = today().firstOfMonth()
     private var selectedDate: String? = null
     private var loadJob: Job? = null
@@ -69,6 +71,8 @@ class CalendarViewModel(
                             .distinct(),
                     )
                     .associate { it.id to it.name }
+                rollingDifficultyScore = workoutRepository.getRollingDifficultyScore()
+                hasActiveSession = workoutRepository.getActiveSession() != null
                 render(isLoading = false)
             } catch (exception: CancellationException) {
                 throw exception
@@ -97,6 +101,7 @@ class CalendarViewModel(
 
     private fun render(isLoading: Boolean) {
         val today = today()
+        val allCompletions = completionsByDate.values.flatten()
         _state.update {
             it.copy(
                 isLoading = isLoading,
@@ -105,11 +110,49 @@ class CalendarViewModel(
                 canGoToNextMonth = displayedMonth < today.firstOfMonth(),
                 weeks = buildWeeks(today),
                 selectedDay = selectedDate?.let(::buildDayDetail),
-                totalWorkouts = completionsByDate.values.sumOf { workouts -> workouts.size },
+                today = todayPeriod(today),
+                week = weekPeriod(today),
+                totalWorkouts = allCompletions.size,
+                averageMinutes = if (allCompletions.isEmpty()) {
+                    0
+                } else {
+                    (allCompletions.sumOf { completion -> completion.durationSeconds } /
+                        60.0 / allCompletions.size).roundToInt()
+                },
                 streakDays = currentStreak(today),
+                rollingDifficulty = ((rollingDifficultyScore * 10).roundToInt() / 10.0).toString(),
+                activeSessionLabel = if (hasActiveSession) {
+                    "Workout in progress"
+                } else {
+                    "No workout in progress"
+                },
             )
         }
     }
+
+    private fun todayPeriod(today: LocalDate): HistoryPeriodUi =
+        completionsByDate[today.toString()].orEmpty().toPeriodUi("Today")
+
+    private fun weekPeriod(today: LocalDate): HistoryPeriodUi {
+        val weekStart = today.minus(today.dayOfWeek.isoDayNumber - 1, DateTimeUnit.DAY)
+        val weekCompletions = completionsByDate
+            .filterKeys { date ->
+                try {
+                    LocalDate.parse(date) in weekStart..today
+                } catch (_: IllegalArgumentException) {
+                    false
+                }
+            }
+            .values
+            .flatten()
+        return weekCompletions.toPeriodUi("This week")
+    }
+
+    private fun List<CompletedWorkout>.toPeriodUi(label: String) = HistoryPeriodUi(
+        label = label,
+        workouts = size,
+        minutes = (sumOf { it.durationSeconds } / 60.0).roundToInt(),
+    )
 
     private fun buildWeeks(today: LocalDate): List<List<CalendarCellUi?>> {
         val daysInMonth = displayedMonth
